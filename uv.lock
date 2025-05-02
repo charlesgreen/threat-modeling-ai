@@ -1788,6 +1788,25 @@ wheels = [
 ]
 
 [[package]]
+name = "langfuse"
+version = "2.60.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "backoff" },
+    { name = "httpx" },
+    { name = "idna" },
+    { name = "packaging" },
+    { name = "pydantic" },
+    { name = "requests" },
+    { name = "wrapt" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d7/7a/a998b48823a609af8f5096cb322a4ddfded01d565509cd6b511a2e5891ca/langfuse-2.60.3.tar.gz", hash = "sha256:171c0caf07a26282bd0403c6c15886ef1f447def42d6570684c94d6d9ae61d6e", size = 152467 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/df/6b/4d3bdea30ceb3e4cf3ac1a2f104ffc20b6caa636549874262b2fa8cedaec/langfuse-2.60.3-py3-none-any.whl", hash = "sha256:2b866c44f24d5f06b617d7f14f75a2e42577538b530e4e26dc6ad770d6d1399e", size = 275008 },
+]
+
+[[package]]
 name = "langsmith"
 version = "0.1.136"
 source = { registry = "https://pypi.org/simple" }
@@ -3609,10 +3628,14 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "crewai", extra = ["tools"] },
+    { name = "langfuse" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "crewai", extras = ["tools"], specifier = ">=0.76.2" }]
+requires-dist = [
+    { name = "crewai", extras = ["tools"], specifier = ">=0.76.2" },
+    { name = "langfuse", specifier = ">=2.60.3" },
+]
 
 [[package]]
 name = "tiktoken"

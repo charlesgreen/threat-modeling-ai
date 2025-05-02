@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import sys
+from langfuse.openai import openai
 
 from threat_modeling.crew import ThreatModelingCrew
 
