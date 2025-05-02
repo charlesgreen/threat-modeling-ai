@@ -2,6 +2,8 @@
 
 > WIP: This is a work in progress. The project is not yet complete, and the documentation may be subject to change.
 
+[Bsides Tokyo 2025 - Threat Modeling with Multi-Agent AI](https://bsides.tokyo/en/2025/n55/).
+
 Welcome to the Threat Modeling Crew project, powered by [crewAI](https://crewai.com). This template is designed to help you set up a multi-agent AI system with ease, leveraging the powerful and flexible framework provided by crewAI. Our goal is to enable your agents to collaborate effectively on complex tasks, maximizing their collective intelligence and capabilities.
 
 ## Installation
