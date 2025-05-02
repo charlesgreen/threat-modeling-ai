@@ -1,0 +1,24 @@
+[project]
+name = "threat_modeling"
+version = "0.1.0"
+description = "threat modeling using crewAI"
+authors = [
+    { name = "Charles Green", email = "hello@charles.green" },
+]
+requires-python = ">=3.10,<=3.13"
+dependencies = [
+    "crewai[tools]>=0.76.2",
+]
+
+[project.scripts]
+threat_modeling = "threat_modeling.main:run"
+run_crew = "threat_modeling.main:run"
+train = "threat_modeling.main:train"
+replay = "threat_modeling.main:replay"
+test = "threat_modeling.main:test"
+
+[build-system]
+requires = [
+    "hatchling",
+]
+build-backend = "hatchling.build"
