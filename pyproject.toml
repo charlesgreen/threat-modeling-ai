@@ -1,14 +1,18 @@
 [project]
 name = "threat_modeling"
 version = "0.1.0"
-description = "threat modeling using crewAI"
+description = "Threat modeling using CrewAI"
 authors = [
     { name = "Charles Green", email = "hello@charles.green" },
 ]
 requires-python = ">=3.10,<=3.13"
+
 dependencies = [
-    "crewai[tools]>=0.76.2",
-    "langfuse>=2.60.3",
+    "crewai[tools]==0.76.2",
+    "langfuse==2.60.3",
+    "pymupdf==1.23.6",        # PDF reading
+    "pillow==10.2.0",         # Image support for OCR
+    "pytesseract==0.3.10"     # OCR for diagram images
 ]
 
 [project.scripts]
@@ -20,6 +24,6 @@ test = "threat_modeling.main:test"
 
 [build-system]
 requires = [
-    "hatchling",
+    "hatchling"
 ]
 build-backend = "hatchling.build"

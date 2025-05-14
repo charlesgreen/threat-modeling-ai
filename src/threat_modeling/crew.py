@@ -74,7 +74,7 @@ class ThreatModelingCrew:
 
     @crew
     def crew(self) -> Crew:
-        """Creates the LeadQualification and Research Crew"""
+        """Creates the ThreatModeling and Research Crew"""
         return Crew(
             agents=self.agents,
             tasks=self.tasks,

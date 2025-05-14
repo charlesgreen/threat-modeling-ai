@@ -1,6 +1,6 @@
 # Threat Modeling Crew
 
-> WIP: This is a work in progress. The project is not yet complete, and the documentation may be subject to change.
+> WIP: This is a work in progress. The project is not yet complete and the documentation may be subject to change.
 
 [Bsides Tokyo 2025 - Threat Modeling with Multi-Agent AI](https://bsides.tokyo/en/2025/n55/).
 
@@ -22,10 +22,23 @@ Next, navigate to your project directory and install the dependencies:
 
 ```bash
 uv lock
+uv sync
 ```
 
+## 🧱 System-level Dependency for Tesseract
+
+Make sure Tesseract is also installed on the machine (this is not installable via pip):
+
+### macOS
+
 ```bash
-uv sync
+brew install tesseract
+```
+
+### Ubuntu/Debian
+
+```bash
+sudo apt install tesseract-ocr
 ```
 
 ### Customizing
@@ -55,11 +68,7 @@ The crewai-plus-lead-scoring Crew is composed of multiple AI agents, each with u
 
 ## Support
 
-For support, questions, or feedback regarding the ThreatModeling Crew or crewAI.
+For support, questions, or feedback regarding the ThreatModeling Crew.
 
-- Visit our [documentation](https://docs.crewai.com)
-- Reach out to us through our [GitHub repository](https://github.com/joaomdmoura/crewai)
-- [Joing our Discord](https://discord.com/invite/X4JWnZnxPb)
-- [Chat wtih our docs](https://chatg.pt/DWjSBZn)
-
-Let's create wonders together with the power and simplicity of crewAI.
+- [GitHub Issues](https://github.com/charlesgreen/threat-modeling-ai/issues)
+- [Charles Green](https://charles.green)
