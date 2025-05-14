@@ -179,3 +179,4 @@ cython_debug/
 
 # generated project output
 gcp_project_metadata.json
+threat_model.csv
