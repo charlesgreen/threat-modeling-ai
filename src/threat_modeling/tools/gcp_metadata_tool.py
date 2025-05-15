@@ -11,12 +11,13 @@ from crewai.tools import BaseTool
 
 
 class GCPMetadataInput(BaseModel):
-    project_id: constr(
-        strip_whitespace=True,
+    project_id: str = Field(
+        ...,
+        description="GCP project ID to extract metadata from",
         min_length=6,
         max_length=30,
-        pattern=r"^[a-z][a-z0-9\-]{4,28}[a-z0-9]$"
-    ) = Field(..., description="GCP project ID to extract metadata from")
+        pattern=r"^[a-z][a-z0-9\-]{4,28}[a-z0-9]$",
+    )
 
 # ----------------------------------------
 # 🧠 GCPMetadataTool with validation

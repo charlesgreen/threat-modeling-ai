@@ -64,13 +64,18 @@ sudo apt install tesseract-ocr
 Create a `.env` file at the project root with the following (example):
 
 ```env
+# Traces, evals, prompt management and metrics
 LANGFUSE_SECRET_KEY=sk-lf-...
 LANGFUSE_PUBLIC_KEY=pk-lf-...
 LANGFUSE_HOST="https://us.cloud.langfuse.com"
 
-OPENAI_API_KEY=sk-xxxxxx
+# Google Search API
 SERPER_API_KEY=da8ef...
 
+# Configured to use OpenAI
+OPENAI_API_KEY=sk-xxxxxx
+
+# Execution configuration
 PROJECT_ID=my-gcp-project-id
 PDF_PATH=input/architecture.pdf
 DIAGRAM_PATH=input/diagram.png

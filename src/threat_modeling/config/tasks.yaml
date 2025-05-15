@@ -36,37 +36,51 @@ extract_resources_task:
 
 stride_threat_modeling_task:
   description: >
-    Perform STRIDE threat modeling on each component from the extracted architecture.
-    Use the component type, role, and cloud context to infer possible threat vectors
-    across Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service,
-    and Elevation of Privilege.
+    You are a cloud security expert specializing in threat modeling using STRIDE, MITRE ATT&CK, and OWASP frameworks.
 
-    Each component should be assessed independently and returned with associated threats.
+    Your job is to perform a deep threat analysis of the system components listed below. For each, consider:
+
+    - STRIDE: Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege
+    - MITRE ATT&CK techniques if applicable (TXXXX IDs)
+    - OWASP Top 10 if the component is user-facing or handles data (e.g., A01: Broken Access Control)
+    - Common cloud misconfigurations
+    - Intentional misuse, abuse cases, or trust boundary violations
+
+    Include multiple threats per component when appropriate. Be specific in naming the attack, affected asset, impact, and actionable mitigation. If the risk arises due to a design assumption (e.g. "internal services are trusted"), note it.
 
     Component List:
     {component_list}
 
   expected_output: >
     A JSON list of threat entries. Each entry should include:
-    - threat
-    - asset
-    - category (STRIDE)
-    - likelihood (Low/Medium/High)
-    - impact (Minor/Moderate/Severe)
-    - mitigation (actionable suggestion)
+    - threat (short description of the attack or issue)
+    - asset (component name, e.g., "Cloud Run: api-handler")
+    - category (STRIDE category)
+    - likelihood (Low / Medium / High)
+    - impact (Minor / Moderate / Severe)
+    - mitigation (clear, actionable fix; include OWASP and MITRE references if relevant)
 
     Format:
     [
       {
-        "threat": "Token forgery attack",
-        "asset": "Cloud Run: web-api-service",
-        "category": "Spoofing",
+        "threat": "Exposed API allows privilege escalation",
+        "asset": "Cloud Run: api-handler",
+        "category": "Elevation of Privilege",
         "likelihood": "High",
         "impact": "Severe",
-        "mitigation": "Use signed JWT tokens with audience validation"
+        "mitigation": "Enforce RBAC and limit service-to-service tokens. [MITRE: T1068] [OWASP: A01]"
+      },
+      {
+        "threat": "Assumption: Internal services are trusted without auth",
+        "asset": "Cloud Function: internal-task-runner",
+        "category": "Spoofing",
+        "likelihood": "Medium",
+        "impact": "Moderate",
+        "mitigation": "Apply mutual TLS or signed requests for internal service calls."
       },
       ...
     ]
+
 
 export_risks_task:
   description: >

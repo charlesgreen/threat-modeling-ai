@@ -4,6 +4,7 @@ from pathlib import Path
 
 from crewai import Agent, Crew, Process, Task
 from crewai.project import CrewBase, agent, crew, task
+from langfuse import Langfuse
 
 # Import your custom tools
 from threat_modeling.tools.gcp_metadata_tool import GCPMetadataTool
@@ -11,6 +12,8 @@ from threat_modeling.tools.pdf_reader_tool import PDFReaderTool
 from threat_modeling.tools.image_diagram_tool import ImageDiagramTool
 from threat_modeling.tools.stride_threat_modeler_tool import STRIDEThreatModelerTool
 from threat_modeling.tools.csv_risk_exporter import CSVRiskExporterTool
+
+langfuse = Langfuse()
 
 # Optional schema for validating threat output
 class ThreatEntry(BaseModel):
@@ -35,7 +38,8 @@ class ThreatModelingCrew:
 
     @agent
     def resource_extraction_agent(self) -> Agent:
-        return Agent(
+        trace = langfuse.trace(name="resource-extraction", input={"task": "extract_resources"})
+        agent = Agent(
             config=self.agents_config["resource_extraction_agent"],
             tools=[
                 GCPMetadataTool(),
@@ -45,10 +49,12 @@ class ThreatModelingCrew:
             allow_delegation=False,
             verbose=True,
         )
+        return agent
 
     @agent
     def threat_modeling_agent(self) -> Agent:
-        return Agent(
+        trace = langfuse.trace(name="threat-modeling", input={"task": "stride_threat_modeling"})
+        agent = Agent(
             config=self.agents_config["threat_modeling_agent"],
             tools=[
                 STRIDEThreatModelerTool()
@@ -56,10 +62,12 @@ class ThreatModelingCrew:
             allow_delegation=False,
             verbose=True,
         )
+        return agent
 
     @agent
     def risk_export_agent(self) -> Agent:
-        return Agent(
+        trace = langfuse.trace(name="risk-export", input={"task": "export_risks"})
+        agent = Agent(
             config=self.agents_config["risk_export_agent"],
             tools=[
                 CSVRiskExporterTool()
@@ -67,6 +75,7 @@ class ThreatModelingCrew:
             allow_delegation=False,
             verbose=True,
         )
+        return agent
 
     # TASKS
 
