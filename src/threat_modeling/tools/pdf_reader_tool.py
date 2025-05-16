@@ -2,6 +2,8 @@ import fitz  # PyMuPDF
 import os
 from pydantic import BaseModel, ValidationError, Field
 from crewai.tools import BaseTool
+from dotenv import load_dotenv
+import json
 
 # ----------------------------------------
 # 📦 Pydantic model for input validation
@@ -22,7 +24,14 @@ class PDFReaderTool(BaseTool):
         "Useful for interpreting system designs, architecture write-ups, or threat assessments."
     )
 
-    def _run(self, file_path: str) -> str:
+    def _run(self, file_path: str = "", **kwargs) -> str:
+        load_dotenv()
+        # Allow file_path from kwargs or env
+        if not file_path:
+            file_path = kwargs.get("file_path") or ""
+        if not file_path:
+            file_path = os.environ.get("PDF_PATH", "")
+        print(f"[DEBUG] [PDFReaderTool] Using file_path: {file_path}")
         """
         Expected Input:
         A string containing a valid file path to a `.pdf` file.
@@ -51,7 +60,7 @@ class PDFReaderTool(BaseTool):
                 full_text += page.get_text() + "\n\n"
 
             # Step 4: Return structured LLM prompt
-            return {
+            return json.dumps({
                 "type": "text_prompt",
                 "text": full_text.strip(),
                 "instructions": (
@@ -60,7 +69,7 @@ class PDFReaderTool(BaseTool):
                     "If possible, align content to the STRIDE framework. "
                     "Return a structured summary of services, risks, and mitigation recommendations."
                 )
-            }
+            })
 
         except ValidationError as ve:
             return f"[ERROR] Input validation failed: {ve.json(indent=2)}"

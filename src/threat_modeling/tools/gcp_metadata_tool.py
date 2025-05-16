@@ -2,8 +2,13 @@ import subprocess
 import json
 import re
 import os
+import hashlib
+import time
 from pydantic import BaseModel, ValidationError, Field, constr
 from crewai.tools import BaseTool
+
+CACHE_DIR = ".gcp_metadata_cache"
+CACHE_TTL_SECONDS = 3600  # 1 hour
 
 # ----------------------------------------
 # 📦 Pydantic schema for input validation
@@ -33,25 +38,44 @@ class GCPMetadataTool(BaseTool):
         "Requires that the gcloud and bq CLIs are authenticated and installed."
     )
 
-    def _run(self, project_id: str) -> str:
-        """
-        Expected Input:
-        A valid GCP project ID string, e.g., "my-cloud-project"
-
-        Expected Output:
-        A JSON string representing GCP metadata including compute, storage, functions, pubsub, etc.
-        """
-
+    def _run(self, **kwargs) -> str:
+        project_id = kwargs.get("project_id")
+        if not project_id:
+            project_id = os.environ.get("PROJECT_ID")
+        print(f"[DEBUG] [GCPMetadataTool] Using project_id: {project_id}")
+        if not project_id:
+            raise ValueError("PROJECT_ID must be set in the environment or passed as an argument.")
         try:
             validated = GCPMetadataInput(project_id=project_id)
             project_id = validated.project_id
 
+            def get_cache_path(command):
+                os.makedirs(CACHE_DIR, exist_ok=True)
+                key = hashlib.sha256(" ".join(command).encode()).hexdigest()
+                return os.path.join(CACHE_DIR, f"{project_id}_{key}.json")
+
             def run_gcloud(command, silent=False):
+                cache_path = get_cache_path(command)
+                # Check cache
+                if os.path.exists(cache_path):
+                    mtime = os.path.getmtime(cache_path)
+                    if time.time() - mtime < CACHE_TTL_SECONDS:
+                        try:
+                            with open(cache_path, "r") as f:
+                                print(f"[INFO] [GCPMetadataTool] Loaded cached result for: {' '.join(command)}")
+                                return json.load(f)
+                        except Exception:
+                            pass  # Ignore cache read errors
+                # Run command if not cached
                 try:
                     result = subprocess.run(
                         command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, text=True)
                     try:
-                        return json.loads(result.stdout)
+                        data = json.loads(result.stdout)
+                        # Save to cache
+                        with open(cache_path, "w") as f:
+                            json.dump(data, f)
+                        return data
                     except json.JSONDecodeError:
                         if not silent:
                             print(

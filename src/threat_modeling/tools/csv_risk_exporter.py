@@ -30,7 +30,17 @@ class CSVRiskExporterTool(BaseTool):
         "Input must be a JSON array of threats with keys: threat, asset, category, likelihood, impact, mitigation."
     )
 
-    def _run(self, risks_json: str) -> str:
+    def _run(self, risks_json: str = "", **kwargs) -> str:
+        import os
+        from dotenv import load_dotenv
+        load_dotenv()
+        # Allow risks_json from kwargs or env
+        if not risks_json:
+            risks_json = kwargs.get("risks_json") or ""
+        if not risks_json:
+            risks_json = os.environ.get("RISKS_JSON", "")
+        csv_path = os.environ.get("CSV_PATH", "threat_model.csv")
+        print(f"[DEBUG] [CSVRiskExporterTool] Using csv_path: {csv_path}")
         """
         Expected Input:
         JSON string of the form:
@@ -49,7 +59,6 @@ class CSVRiskExporterTool(BaseTool):
         Output:
         CSV string with header row and one row per risk.
         """
-
         try:
             parsed = json.loads(risks_json)
             risks: List[RiskItem] = [RiskItem(**item) for item in parsed]
@@ -61,7 +70,12 @@ class CSVRiskExporterTool(BaseTool):
             for item in risks:
                 writer.writerow(item.dict())
 
-            return output.getvalue()
+            csv_content = output.getvalue()
+            # Write to file at csv_path
+            with open(csv_path, "w") as f:
+                f.write(csv_content)
+
+            return csv_content
 
         except (json.JSONDecodeError, ValidationError) as e:
             return f"[ERROR] Invalid input: {str(e)}"

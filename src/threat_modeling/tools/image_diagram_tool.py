@@ -4,6 +4,8 @@ import os
 import base64
 import io
 from pydantic import BaseModel, ValidationError, Field
+from dotenv import load_dotenv
+import json
 
 
 # ----------------------------------------
@@ -25,7 +27,7 @@ class ImageDiagramTool(BaseTool):
         "Useful for identifying components, data flows, trust boundaries, and correlating with GCP metadata for STRIDE threat modeling."
     )
 
-    def _run(self, image_path: str) -> str:
+    def _run(self, image_path: str = "", **kwargs) -> str:
         """
         Expected Input:
         A valid image path string pointing to a PNG, JPG, or JPEG file.
@@ -40,6 +42,16 @@ class ImageDiagramTool(BaseTool):
 
         If input or image processing fails, returns an error string.
         """
+        import os
+        from dotenv import load_dotenv
+        load_dotenv()
+
+        # Allow image_path from kwargs or env
+        if not image_path:
+            image_path = kwargs.get("image_path") or ""
+        if not image_path:
+            image_path = os.environ.get("DIAGRAM_PATH", "")
+        print(f"[DEBUG] [ImageDiagramTool] Using image_path: {image_path}")
 
         try:
             # Step 1: Validate input using Pydantic
@@ -55,7 +67,7 @@ class ImageDiagramTool(BaseTool):
             encoded_image = base64.b64encode(buffer.getvalue()).decode("utf-8")
 
             # Step 3: Return a structured prompt for vision-capable LLM
-            return {
+            return json.dumps({
                 "type": "image_prompt",
                 "image_base64": encoded_image,
                 "instructions": (
@@ -65,7 +77,7 @@ class ImageDiagramTool(BaseTool):
                     "Apply STRIDE threat modeling categories to each major component where appropriate. "
                     "Return your output as a structured list of findings."
                 )
-            }
+            })
 
             # === Example Output Expected from the LLM ===
             # [

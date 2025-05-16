@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from langfuse.openai import openai  # <-- enable Langfuse tracing
+from typing import Optional
 
 import sys
 import os
@@ -8,8 +9,9 @@ from dotenv import load_dotenv
 import typer
 from threat_modeling.crew import ThreatModelingCrew
 
+load_dotenv()  # Ensure .env is loaded at startup
 app = typer.Typer()
-load_dotenv()  # Loads .env into os.environ
+print(f"[DEBUG] PROJECT_ID from .env: {os.getenv('PROJECT_ID')}")
 
 REQUIRED_INPUT_KEYS = [
     "gcp_metadata",
@@ -20,14 +22,18 @@ REQUIRED_INPUT_KEYS = [
 ]
 
 def build_inputs(
-    project_id: str = None,
-    pdf_path: str = None,
-    diagram_path: str = None
+    project_id: Optional[str] = None,
+    pdf_path: Optional[str] = None,
+    diagram_path: Optional[str] = None
 ) -> dict:
     # Allow fallback to .env if values not passed via CLI
     project_id = project_id or os.getenv("PROJECT_ID")
     pdf_path = pdf_path or os.getenv("PDF_PATH")
     diagram_path = diagram_path or os.getenv("DIAGRAM_PATH")
+
+    print(f"[DEBUG] build_inputs resolved project_id: {project_id}")
+    print(f"[DEBUG] build_inputs resolved pdf_path: {pdf_path}")
+    print(f"[DEBUG] build_inputs resolved diagram_path: {diagram_path}")
 
     inputs = {}
     if project_id: inputs["project_id"] = project_id
@@ -52,7 +58,7 @@ def validate_inputs(inputs: dict):
 
 @app.command()
 def run(
-    project_id: str = typer.Option(None),
+    project_id: str = typer.Option(None, envvar="PROJECT_ID", help="GCP Project ID (optional, will use .env if not provided)"),
     pdf_path: str = typer.Option(None),
     diagram_path: str = typer.Option(None),
 ):
@@ -67,7 +73,9 @@ def run(
     ThreatModelingCrew().crew().kickoff(inputs=inputs)
 
 @app.command()
-def train(iterations: int, filename: str):
+def train(iterations: int, filename: str, project_id: str = typer.Option(..., help="GCP Project ID (required)")):
+    inputs = build_inputs(project_id)
+    validate_inputs(inputs)
     inputs = build_inputs()
     validate_inputs(inputs)
     ThreatModelingCrew().crew().train(n_iterations=iterations, filename=filename, inputs=inputs)
@@ -76,7 +84,7 @@ def train(iterations: int, filename: str):
 def test(iterations: int, openai_model_name: str):
     inputs = build_inputs()
     validate_inputs(inputs)
-    ThreatModelingCrew().crew().test(n_iterations=iterations, openai_model_name=openai_model_name, inputs=inputs)
+    ThreatModelingCrew().crew().test(n_iterations=iterations, eval_llm=openai_model_name, inputs=inputs)
 
 @app.command()
 def replay(task_id: str):

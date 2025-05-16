@@ -1,9 +1,11 @@
 from typing import List
 from pydantic import BaseModel, Field
 from pathlib import Path
+import yaml
 
 from crewai import Agent, Crew, Process, Task
 from crewai.project import CrewBase, agent, crew, task
+from crewai.tools import BaseTool  # <-- Add this import for ToolProxy
 from langfuse import Langfuse
 
 # Import your custom tools
@@ -31,16 +33,44 @@ CONFIG_PATH = Path(__file__).parent / "config"
 class ThreatModelingCrew:
     """Threat Modeling Crew"""
 
-    agents_config = str(CONFIG_PATH / "agents.yaml")  # ✅ Cast to string
-    tasks_config = str(CONFIG_PATH / "tasks.yaml")    # ✅ Cast to string
+    agents_config_path = str(CONFIG_PATH / "agents.yaml")
+    tasks_config_path = str(CONFIG_PATH / "tasks.yaml")
+
+    def __init__(self):
+        # Load YAML configs as dicts
+        with open(self.agents_config_path, 'r') as f:
+            self.agents_config = yaml.safe_load(f)
+        with open(self.tasks_config_path, 'r') as f:
+            self.tasks_config = yaml.safe_load(f)
+        print(f"[DEBUG] Loaded agents_config keys: {list(self.agents_config.keys())}")
+        print(f"[DEBUG] Loaded tasks_config keys: {list(self.tasks_config.keys())}")
+
+        # --- Config validation ---
+        required_agent_fields = ["role", "goal", "backstory"]
+        for agent_name, agent_cfg in self.agents_config.items():
+            for field in required_agent_fields:
+                if field not in agent_cfg or not agent_cfg[field]:
+                    raise ValueError(f"Agent config '{agent_name}' missing required field: '{field}'")
+        required_task_fields = ["description", "expected_output"]
+        for task_name, task_cfg in self.tasks_config.items():
+            for field in required_task_fields:
+                if field not in task_cfg or not task_cfg[field]:
+                    raise ValueError(f"Task config '{task_name}' missing required field: '{field}'")
+        print("[DEBUG] Agent/task config validation passed.")
 
     # AGENTS
 
     @agent
     def resource_extraction_agent(self) -> Agent:
+        cfg = self.agents_config["resource_extraction_agent"]
         trace = langfuse.trace(name="resource-extraction", input={"task": "extract_resources"})
+        # Debug: print agent creation
+        print(f"[DEBUG] Creating resource_extraction_agent with tools: GCPMetadataTool, PDFReaderTool, ImageDiagramTool")
         agent = Agent(
-            config=self.agents_config["resource_extraction_agent"],
+            role=cfg["role"],
+            goal=cfg["goal"],
+            backstory=cfg["backstory"],
+            config=cfg,
             tools=[
                 GCPMetadataTool(),
                 PDFReaderTool(),
@@ -53,11 +83,44 @@ class ThreatModelingCrew:
 
     @agent
     def threat_modeling_agent(self) -> Agent:
+        cfg = self.agents_config["threat_modeling_agent"]
         trace = langfuse.trace(name="threat-modeling", input={"task": "stride_threat_modeling"})
+        import json
+        class ToolProxy(BaseTool):
+            def __init__(self, wrapped_tool):
+                super().__init__(name=wrapped_tool.name, description=wrapped_tool.description)
+                self._wrapped_tool = wrapped_tool
+            def _run(self, *args, **kwargs):
+                print(f"[DEBUG] [threat_modeling_agent] ToolProxy for {self.name} called with args: {args}, kwargs: {kwargs}")
+                # Always pass a single keyword arg: combined_input=<string>
+                combined_input = None
+                if args and len(args) == 1:
+                    if isinstance(args[0], dict):
+                        combined_input = json.dumps(args[0])
+                    elif isinstance(args[0], str):
+                        combined_input = args[0]
+                    else:
+                        combined_input = str(args[0])
+                elif kwargs and 'combined_input' in kwargs:
+                    combined_input = kwargs['combined_input']
+                elif kwargs:
+                    # If kwargs is a dict, dump as JSON
+                    combined_input = json.dumps(kwargs)
+                else:
+                    combined_input = ""
+                print(f"[DEBUG] [threat_modeling_agent] Passing combined_input to STRIDEThreatModelerTool: {combined_input[:200]}...")
+                return self._wrapped_tool._run(combined_input=combined_input)
+            def __getattr__(self, attr):
+                if attr in ("_wrapped_tool", "__class__", "__dict__", "__weakref__", "__module__", "__init__", "_run", "__getattr__"):
+                    return object.__getattribute__(self, attr)
+                return getattr(self._wrapped_tool, attr)
         agent = Agent(
-            config=self.agents_config["threat_modeling_agent"],
+            role=cfg["role"],
+            goal=cfg["goal"],
+            backstory=cfg["backstory"],
+            config=cfg,
             tools=[
-                STRIDEThreatModelerTool()
+                ToolProxy(STRIDEThreatModelerTool())
             ],
             allow_delegation=False,
             verbose=True,
@@ -66,9 +129,13 @@ class ThreatModelingCrew:
 
     @agent
     def risk_export_agent(self) -> Agent:
+        cfg = self.agents_config["risk_export_agent"]
         trace = langfuse.trace(name="risk-export", input={"task": "export_risks"})
         agent = Agent(
-            config=self.agents_config["risk_export_agent"],
+            role=cfg["role"],
+            goal=cfg["goal"],
+            backstory=cfg["backstory"],
+            config=cfg,
             tools=[
                 CSVRiskExporterTool()
             ],
@@ -81,22 +148,29 @@ class ThreatModelingCrew:
 
     @task
     def extract_resources_task(self) -> Task:
+        cfg = self.tasks_config["extract_resources_task"]
+        description = cfg["description"]
         return Task(
-            config=self.tasks_config["extract_resources_task"],
+            description=description,
+            expected_output=cfg["expected_output"],
             agent=self.resource_extraction_agent(),
         )
 
     @task
     def stride_threat_modeling_task(self) -> Task:
+        cfg = self.tasks_config["stride_threat_modeling_task"]
         return Task(
-            config=self.tasks_config["stride_threat_modeling_task"],
+            description=cfg["description"],
+            expected_output=cfg["expected_output"],
             agent=self.threat_modeling_agent(),
         )
 
     @task
     def export_risks_task(self) -> Task:
+        cfg = self.tasks_config["export_risks_task"]
         return Task(
-            config=self.tasks_config["export_risks_task"],
+            description=cfg["description"],
+            expected_output=cfg["expected_output"],
             agent=self.risk_export_agent(),
             output_file="threat_model.csv",  # Saves final CSV to file
         )
@@ -104,11 +178,19 @@ class ThreatModelingCrew:
     # CREW
 
     @crew
-    def crew(self) -> Crew:
+    def crew(self, inputs=None) -> Crew:
         """Creates the Threat Modeling Crew"""
         return Crew(
-            agents=self.agents,
-            tasks=self.tasks,
+            agents=[
+                self.resource_extraction_agent(),
+                self.threat_modeling_agent(),
+                self.risk_export_agent(),
+            ],
+            tasks=[
+                self.extract_resources_task(),
+                self.stride_threat_modeling_task(),
+                self.export_risks_task(),
+            ],
             process=Process.sequential,  # Executes tasks in order
             verbose=True,
         )
