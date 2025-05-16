@@ -92,24 +92,24 @@ class ThreatModelingCrew:
                 self._wrapped_tool = wrapped_tool
             def _run(self, *args, **kwargs):
                 print(f"[DEBUG] [threat_modeling_agent] ToolProxy for {self.name} called with args: {args}, kwargs: {kwargs}")
-                # Always pass a single keyword arg: combined_input=<string>
-                combined_input = None
+                # Always pass a single keyword arg: summarized_input=<string>
+                summarized_input = None
                 if args and len(args) == 1:
                     if isinstance(args[0], dict):
-                        combined_input = json.dumps(args[0])
+                        summarized_input = json.dumps(args[0])
                     elif isinstance(args[0], str):
-                        combined_input = args[0]
+                        summarized_input = args[0]
                     else:
-                        combined_input = str(args[0])
-                elif kwargs and 'combined_input' in kwargs:
-                    combined_input = kwargs['combined_input']
+                        summarized_input = str(args[0])
+                elif kwargs and 'summarized_input' in kwargs:
+                    summarized_input = kwargs['summarized_input']
                 elif kwargs:
                     # If kwargs is a dict, dump as JSON
-                    combined_input = json.dumps(kwargs)
+                    summarized_input = json.dumps(kwargs)
                 else:
-                    combined_input = ""
-                print(f"[DEBUG] [threat_modeling_agent] Passing combined_input to STRIDEThreatModelerTool: {combined_input[:200]}...")
-                return self._wrapped_tool._run(combined_input=combined_input)
+                    summarized_input = ""
+                print(f"[DEBUG] [threat_modeling_agent] Passing summarized_input to STRIDEThreatModelerTool: {summarized_input[:200]}...")
+                return self._wrapped_tool._run(summarized_input=summarized_input)
             def __getattr__(self, attr):
                 if attr in ("_wrapped_tool", "__class__", "__dict__", "__weakref__", "__module__", "__init__", "_run", "__getattr__"):
                     return object.__getattribute__(self, attr)
@@ -150,6 +150,7 @@ class ThreatModelingCrew:
     def extract_resources_task(self) -> Task:
         cfg = self.tasks_config["extract_resources_task"]
         description = cfg["description"]
+        # After resource extraction, summarized GCP data is cached by GCPMetadataTool
         return Task(
             description=description,
             expected_output=cfg["expected_output"],
@@ -159,8 +160,27 @@ class ThreatModelingCrew:
     @task
     def stride_threat_modeling_task(self) -> Task:
         cfg = self.tasks_config["stride_threat_modeling_task"]
+        # Load summarized GCP data from cache (if available)
+        import os, json
+        CACHE_DIR = ".gcp_metadata_cache"
+        from dotenv import load_dotenv
+        load_dotenv()
+        project_id = os.environ.get("PROJECT_ID")
+        summary_path = os.path.join(CACHE_DIR, f"{project_id}_summary.json")
+        gcp_summary = ""
+        if os.path.exists(summary_path):
+            with open(summary_path, "r") as f:
+                gcp_summary = f.read()
+        else:
+            gcp_summary = "[ERROR] GCP summary not found. Run resource extraction first."
+        # Pass only the summarized GCP data as the task description
+        description = (
+            cfg["description"]
+            + "\n\nGCP Metadata Summary (for threat modeling, do not request full details):\n"
+            + gcp_summary
+        )
         return Task(
-            description=cfg["description"],
+            description=description,
             expected_output=cfg["expected_output"],
             agent=self.threat_modeling_agent(),
         )

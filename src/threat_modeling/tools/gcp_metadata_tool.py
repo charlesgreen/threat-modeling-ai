@@ -150,7 +150,108 @@ class GCPMetadataTool(BaseTool):
                 "iam_policy": get_project_iam_policy()
             }
 
-            return json.dumps(metadata, indent=2)
+            # --- Summarization helpers ---
+            def summarize_compute_instances(instances):
+                summary = []
+                if not instances:
+                    return summary
+                for inst in instances:
+                    summary.append({
+                        "name": inst.get("name"),
+                        "zone": inst.get("zone", "").split("/")[-1],
+                        "machineType": inst.get("machineType", "").split("/")[-1],
+                        "publicIP": any(
+                            ni.get("accessConfigs") and any(ac.get("natIP") for ac in ni["accessConfigs"])
+                            for ni in inst.get("networkInterfaces", [])
+                        ),
+                        "serviceAccounts": [sa.get("email") for sa in inst.get("serviceAccounts", [])]
+                    })
+                return summary
+
+            def summarize_storage_buckets(buckets):
+                summary = []
+                if not buckets:
+                    return summary
+                for b in buckets:
+                    summary.append({
+                        "name": b.get("name"),
+                        "location": b.get("location"),
+                        "storageClass": b.get("storageClass"),
+                        "iamConfiguration": b.get("iamConfiguration", {})
+                    })
+                return summary
+
+            def summarize_cloud_functions(funcs):
+                summary = []
+                if not funcs:
+                    return summary
+                for f in funcs:
+                    summary.append({
+                        "name": f.get("name"),
+                        "entryPoint": f.get("entryPoint"),
+                        "runtime": f.get("runtime"),
+                        "httpsTrigger": f.get("httpsTrigger"),
+                        "eventTrigger": f.get("eventTrigger")
+                    })
+                return summary
+
+            def summarize_cloud_run_services(services):
+                summary = []
+                if not services:
+                    return summary
+                for s in services:
+                    summary.append({
+                        "name": s.get("metadata", {}).get("name"),
+                        "url": s.get("status", {}).get("url"),
+                        "latestCreatedRevisionName": s.get("status", {}).get("latestCreatedRevisionName")
+                    })
+                return summary
+
+            def summarize_pubsub_topics(topics):
+                summary = []
+                if not topics:
+                    return summary
+                for t in topics:
+                    summary.append({
+                        "name": t.get("name")
+                    })
+                return summary
+
+            def summarize_bigquery_datasets(datasets):
+                summary = []
+                if not datasets:
+                    return summary
+                for d in datasets:
+                    summary.append({
+                        "datasetId": d.get("datasetReference", {}).get("datasetId"),
+                        "tables": [tbl.get("tableReference", {}).get("tableId") for tbl in d.get("tables", [])]
+                    })
+                return summary
+
+            def summarize_iam_policy(policy):
+                if not policy:
+                    return {}
+                return {
+                    "bindings_count": len(policy.get("bindings", [])),
+                    "roles": list({b.get("role") for b in policy.get("bindings", []) if b.get("role")})
+                }
+
+            # --- Summarize and cache full + summary ---
+            summary = {
+                "compute_instances": summarize_compute_instances(metadata["compute_instances"]),
+                "storage_buckets": summarize_storage_buckets(metadata["storage_buckets"]),
+                "cloud_functions": summarize_cloud_functions(metadata["cloud_functions"]),
+                "cloud_run_services": summarize_cloud_run_services(metadata["cloud_run_services"]),
+                "pubsub_topics": summarize_pubsub_topics(metadata["pubsub_topics"]),
+                "bigquery_datasets": summarize_bigquery_datasets(metadata["bigquery_datasets"]),
+                "iam_policy": summarize_iam_policy(metadata["iam_policy"])
+            }
+            # Cache summary to file
+            summary_cache_path = os.path.join(CACHE_DIR, f"{project_id}_summary.json")
+            with open(summary_cache_path, "w") as f:
+                json.dump(summary, f, indent=2)
+            print(f"[INFO] [GCPMetadataTool] Wrote summarized metadata to {summary_cache_path}")
+            return json.dumps(summary, indent=2)
 
         except ValidationError as ve:
             return f"[ERROR] Input validation failed: {ve.json(indent=2)}"

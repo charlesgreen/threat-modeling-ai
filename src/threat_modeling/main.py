@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from langfuse.openai import openai  # <-- enable Langfuse tracing
+from langfuse.openai import openai
 from typing import Optional
 
 import sys
