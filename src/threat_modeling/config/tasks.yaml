@@ -46,7 +46,8 @@ stride_threat_modeling_task:
     - Common cloud misconfigurations
     - Intentional misuse, abuse cases, or trust boundary violations
 
-    Include multiple threats per component when appropriate. Be specific in naming the attack, affected asset, impact, and actionable mitigation. If the risk arises due to a design assumption (e.g. "internal services are trusted"), note it.
+    Include multiple threats per component when appropriate. Be specific in naming the attack, affected asset, impact, and actionable mitigation. 
+    If the risk arises due to a design assumption (e.g. "internal services are trusted"), note it.
 
     Component List:
     {component_list}
