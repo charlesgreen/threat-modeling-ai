@@ -181,3 +181,4 @@ cython_debug/
 gcp_project_metadata.json
 threat_model.csv
 .gcp_metadata_cache/*
+architecture.*

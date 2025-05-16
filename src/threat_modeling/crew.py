@@ -17,6 +17,33 @@ from threat_modeling.tools.csv_risk_exporter import CSVRiskExporterTool
 
 langfuse = Langfuse()
 
+# GenericToolProxy moved to module level for use in all agents
+class GenericToolProxy(BaseTool):
+    def __init__(self, wrapped_tool):
+        super().__init__(name=wrapped_tool.name, description=wrapped_tool.description)
+        self._wrapped_tool = wrapped_tool
+    def _run(self, *args, **kwargs):
+        import json
+        value = args[0] if args else (next(iter(kwargs.values()), "") if kwargs else "")
+        # If value is a dict with a single key, extract the value
+        if isinstance(value, dict) and len(value) == 1:
+            value = next(iter(value.values()))
+        # If value is a dict or list, serialize it
+        if isinstance(value, (dict, list)):
+            value = json.dumps(value)
+        # If value is not a string, convert to string
+        if not isinstance(value, str):
+            value = str(value)
+        # If value is a string that looks like JSON, but is wrapped in quotes, remove the quotes
+        value = value.strip()
+        if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
+            value = value[1:-1]
+        return self._wrapped_tool._run(value)
+    def __getattr__(self, attr):
+        if attr in ("_wrapped_tool", "__class__", "__dict__", "__weakref__", "__module__", "__init__", "_run", "__getattr__"):
+            return object.__getattribute__(self, attr)
+        return getattr(self._wrapped_tool, attr)
+
 # Optional schema for validating threat output
 class ThreatEntry(BaseModel):
     threat: str
@@ -85,42 +112,13 @@ class ThreatModelingCrew:
     def threat_modeling_agent(self) -> Agent:
         cfg = self.agents_config["threat_modeling_agent"]
         trace = langfuse.trace(name="threat-modeling", input={"task": "stride_threat_modeling"})
-        import json
-        class ToolProxy(BaseTool):
-            def __init__(self, wrapped_tool):
-                super().__init__(name=wrapped_tool.name, description=wrapped_tool.description)
-                self._wrapped_tool = wrapped_tool
-            def _run(self, *args, **kwargs):
-                print(f"[DEBUG] [threat_modeling_agent] ToolProxy for {self.name} called with args: {args}, kwargs: {kwargs}")
-                # Always pass a single keyword arg: summarized_input=<string>
-                summarized_input = None
-                if args and len(args) == 1:
-                    if isinstance(args[0], dict):
-                        summarized_input = json.dumps(args[0])
-                    elif isinstance(args[0], str):
-                        summarized_input = args[0]
-                    else:
-                        summarized_input = str(args[0])
-                elif kwargs and 'summarized_input' in kwargs:
-                    summarized_input = kwargs['summarized_input']
-                elif kwargs:
-                    # If kwargs is a dict, dump as JSON
-                    summarized_input = json.dumps(kwargs)
-                else:
-                    summarized_input = ""
-                print(f"[DEBUG] [threat_modeling_agent] Passing summarized_input to STRIDEThreatModelerTool: {summarized_input[:200]}...")
-                return self._wrapped_tool._run(summarized_input=summarized_input)
-            def __getattr__(self, attr):
-                if attr in ("_wrapped_tool", "__class__", "__dict__", "__weakref__", "__module__", "__init__", "_run", "__getattr__"):
-                    return object.__getattribute__(self, attr)
-                return getattr(self._wrapped_tool, attr)
         agent = Agent(
             role=cfg["role"],
             goal=cfg["goal"],
             backstory=cfg["backstory"],
             config=cfg,
             tools=[
-                ToolProxy(STRIDEThreatModelerTool())
+                GenericToolProxy(STRIDEThreatModelerTool())
             ],
             allow_delegation=False,
             verbose=True,
@@ -137,7 +135,7 @@ class ThreatModelingCrew:
             backstory=cfg["backstory"],
             config=cfg,
             tools=[
-                CSVRiskExporterTool()
+                GenericToolProxy(CSVRiskExporterTool())
             ],
             allow_delegation=False,
             verbose=True,

@@ -54,7 +54,10 @@ class PDFReaderTool(BaseTool):
                 return f"[ERROR] File not found or invalid format: {validated.file_path}"
 
             # Step 3: Extract all text from the PDF using PyMuPDF
-            doc = fitz.open(validated.file_path)
+            try:
+                doc = fitz.open(validated.file_path)
+            except Exception as e:
+                return f"[ERROR] Could not open PDF file: {str(e)}"
             full_text = ""
             for page in doc:
                 full_text += page.get_text() + "\n\n"
