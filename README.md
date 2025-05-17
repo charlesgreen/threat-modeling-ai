@@ -142,7 +142,7 @@ The final output is a CSV file (`threat_model.csv`) containing structured risks:
 ### Train the agents
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m threat_modeling.main train 3 training_output.json
+PYTHONPATH=src .venv/bin/python -m threat_modeling.main run > output.log 2>&1
 ```
 
 ### Replay a previous execution
