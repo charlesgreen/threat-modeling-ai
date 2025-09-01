@@ -1,7 +1,7 @@
 # Threat Modeling Crew
 
-> ⚠️ **Work in Progress**  
-> This project is still under development. Features and documentation are subject to change.
+> ⚠️ This project will be replaced in the coming few weeks with a new [Pydantic AI](https://pydantic.ai/) version.
+> The CrewAI version is no longer being updated. 
 
 [Bsides Tokyo 2025 - Threat Modeling with Multi-Agent AI](https://bsides.tokyo/en/2025/n55/)
 
